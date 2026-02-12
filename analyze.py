@@ -83,13 +83,15 @@ CH0_COMMANDS = {
         ("CMD-L",     "Light toggle - sent by receiver when remote light button pressed"),
     (1,7,1,1,5,5,1,9,1,7,2,1,1):
         ("CMD-ECHO",  "Post-command echo - sent after CMD-R or CMD-L"),
+    (1,7,3,4,4,1,2,6,1,7,1,1,5,1,5,1,1,2,2,9,3,5,1,3,1,3,5,1,1,1):
+        ("CMD-B",     "Status poll - constant message triggering TYPE-B/TYPE-C response"),
 }
 
 # CH0 prefix-match patterns (tried after exact match fails)
 # List of (prefix_tuple, name, description)
 CH0_PREFIXES = [
     ((1,7,3,4,1,4,1,9), "CMD-B-INIT", "Boot handshake config message"),
-    ((1,7,3,4),          "CMD-B",      "Extended command (config/query)"),
+    ((1,7,3,4),          "CMD-B-?",    "Unrecognized CMD-B variant"),
     ((1,7,1,1,5),        "CMD-?",      "Unrecognized command (has command prefix)"),
 ]
 
@@ -142,6 +144,7 @@ DOOR_STATE_MAP = {
     (5, 3): "ARRIVED_OPEN",
     (2, 2): "ARRIVED_CLOSED",       # or IDLE_CLOSED_LIGHT_ON (see sub-state)
     (1, 1): "OBSTRUCTION_REVERSAL",
+    (3, 5): "IDLE_MID",                  # idle at mid-position (post-boot or post-force stop)
 }
 
 # Sub-state from Type B payload positions 2-4
@@ -158,6 +161,8 @@ SUB_STATE_MAP = {
     (3, 9, 1): "IDLE_OPEN",      # stable idle (door open)
     (1, 3, 3): "REVERSAL_INIT",  # first frame of obstruction reversal
     (1, 3, 4): "REVERSAL_INIT_2",# first frame variant
+    (3, 4, 3): "FORCE_STOPPED",  # stopped after physical force or obstruction reversal
+    (4, 3, 9): "AT_ENDPOINT_3",  # arrived at endpoint (variant 3)
 }
 
 # Light state from Type B payload positions 1-4 (only valid when door closed)
@@ -187,6 +192,7 @@ DOOR_STATE_DESC = {
     "ARRIVED_CLOSED":       "Door just arrived at fully closed",
     "OBSTRUCTION_REVERSAL": "Obstruction detected, reversing",
     "STARTING":              "Motor starting (brief transitional)",
+    "IDLE_MID":              "Door at mid-position (post-boot or post-force stop)",
 }
 
 # -- Test File Manifest --
