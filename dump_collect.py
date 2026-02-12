@@ -12,7 +12,35 @@ Usage:
 """
 
 import sys
+import time
 import serial
+from serial.tools import list_ports
+
+
+def wait_for_port(port, timeout=30):
+    """Wait for a COM port to appear (after ESP32 reset disconnects it)."""
+    # Normalize port name for comparison
+    port_upper = port.upper()
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        available = [p.device.upper() for p in list_ports.comports()]
+        if port_upper in available:
+            time.sleep(0.3)  # give Windows a moment to finish setup
+            return True
+        time.sleep(0.5)
+    return False
+
+
+def open_serial(port):
+    """Open serial port, retrying if the ESP32 just reset."""
+    for attempt in range(5):
+        try:
+            ser = serial.Serial(port, 115200, timeout=2)
+            return ser
+        except serial.SerialException:
+            if attempt < 4:
+                time.sleep(1)
+    raise serial.SerialException(f"Cannot open {port} after 5 attempts")
 
 
 def ihex_to_bin(hex_lines):
@@ -131,7 +159,7 @@ def main():
         hex_file = args[1] if len(args) > 1 else "cc1110_flash.hex"
     bin_file = hex_file.replace('.hex', '.bin')
 
-    ser = serial.Serial(port, 115200, timeout=2)
+    ser = open_serial(port)
 
     if dry_run:
         print(f"=== DRY RUN MODE ===")
@@ -141,14 +169,31 @@ def main():
         print(f"Listening on {port} for Intel HEX data...")
 
     print(f"Output: {hex_file} + {bin_file}")
-    print("Press Ctrl+C to abort\n")
+    print("Press Ctrl+C to abort")
+    print("(Resilient to ESP32 resets — will reconnect automatically)\n")
 
     hex_lines = []
     got_eof = False
 
     try:
         while True:
-            raw = ser.readline()
+            try:
+                raw = ser.readline()
+            except (serial.SerialException, OSError):
+                print(f"\n  *** Serial disconnected (ESP32 reset?) ***")
+                try:
+                    ser.close()
+                except Exception:
+                    pass
+                print(f"  Waiting for {port} to reappear...")
+                if not wait_for_port(port):
+                    print(f"  {port} did not come back within 30s. Giving up.")
+                    break
+                print(f"  {port} is back. Reconnecting...")
+                ser = open_serial(port)
+                print(f"  Reconnected! Listening...\n")
+                continue
+
             if not raw:
                 continue
             line = raw.decode('utf-8', errors='replace').strip()
@@ -174,7 +219,10 @@ def main():
     except KeyboardInterrupt:
         print(f"\nInterrupted — saving {len(hex_lines)} records collected so far")
 
-    ser.close()
+    try:
+        ser.close()
+    except Exception:
+        pass
 
     if not hex_lines:
         print("No HEX data received. Check wiring and retry.")
