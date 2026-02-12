@@ -223,6 +223,18 @@ TEST_FILES = {
         {"group": "remote", "desc": "Remote: close from mid to fully closed"},
     "test_A4.txt":
         {"group": "remote", "desc": "Remote: light toggle on then off"},
+    "t05.txt":
+        {"group": "multicycle", "desc": "4-5 full open/close cycles (T-01/T-05)"},
+    "t02-75percent-near-top-early.txt":
+        {"group": "obstruction_pos", "desc": "Obstruction at ~75% travel (near top, early)"},
+    "t02-50percent-middle.txt":
+        {"group": "obstruction_pos", "desc": "Obstruction at ~50% travel (middle)"},
+    "t02-25percent-near-bottom-late.txt":
+        {"group": "obstruction_pos", "desc": "Obstruction at ~25% travel (near bottom, late)"},
+    "t08.txt":
+        {"group": "boot_multi", "desc": "6-15 power-cycle boot sequences (T-08)"},
+    "physically-forced-pushed-blockage.txt":
+        {"group": "force", "desc": "Physically forced/pushed door open while closing"},
     "B1_Boot sequence.txt":
         {"group": "boot", "desc": "Power-on boot sequence (cold start)"},
     "c1_c2_wall_button.txt":
@@ -234,8 +246,9 @@ TEST_FILES = {
 }
 
 GROUP_ORDER = [
-    "baseline", "travel", "stop_reverse", "light",
-    "obstruction", "remote", "boot", "no_receiver", "single_ch",
+    "baseline", "travel", "multicycle", "stop_reverse", "light",
+    "obstruction", "obstruction_pos", "remote", "boot", "boot_multi",
+    "force", "no_receiver", "single_ch",
 ]
 
 GROUP_NAMES = {
@@ -247,6 +260,10 @@ GROUP_NAMES = {
     "remote":       "Remote (Wireless Receiver) Commands",
     "boot":         "Boot / Power-On Sequence",
     "no_receiver":  "Receiver Disconnected Tests",
+    "multicycle":   "Multi-Cycle Travel (T-01/T-05)",
+    "obstruction_pos": "Obstruction at Specific Positions (T-02)",
+    "boot_multi":   "Repeated Boot Sequences (T-08)",
+    "force":        "Physical Force / Push Tests",
     "single_ch":    "Early Single-Channel Captures",
 }
 
