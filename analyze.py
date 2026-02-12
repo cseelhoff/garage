@@ -245,6 +245,12 @@ TEST_FILES = {
         {"group": "boot", "desc": "Power-on boot sequence (cold start)"},
     "c1_c2_wall_button.txt":
         {"group": "no_receiver", "desc": "Receiver disconnected, wall button + idle"},
+    "t07a_idle_closed_60s.txt":
+        {"group": "typec_baseline", "desc": "60s idle closed - TYPE-C baseline (T-07a)"},
+    "t07b_idle_open_60s.txt":
+        {"group": "typec_baseline", "desc": "60s idle open - TYPE-C baseline (T-07b)"},
+    "t07c_full_cycle.txt":
+        {"group": "typec_baseline", "desc": "Full open+close cycle - TYPE-C travel (T-07c)"},
     "2026-02-10_20-52-43-chan0.txt":
         {"group": "single_ch", "desc": "Early single-channel CH0 capture"},
     "2026-02-10_20-59-53chan1.txt":
@@ -254,7 +260,7 @@ TEST_FILES = {
 GROUP_ORDER = [
     "baseline", "travel", "multicycle", "stop_reverse", "light",
     "obstruction", "obstruction_pos", "remote", "boot", "boot_multi",
-    "force", "no_receiver", "single_ch",
+    "force", "typec_baseline", "no_receiver", "single_ch",
 ]
 
 GROUP_NAMES = {
@@ -270,6 +276,7 @@ GROUP_NAMES = {
     "obstruction_pos": "Obstruction at Specific Positions (T-02)",
     "boot_multi":   "Repeated Boot Sequences (T-08)",
     "force":        "Physical Force / Push Tests",
+    "typec_baseline": "TYPE-C Baseline Captures (T-07)",
     "single_ch":    "Early Single-Channel Captures",
 }
 
