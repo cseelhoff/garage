@@ -143,6 +143,7 @@ static void write_byte(uint8_t v)
 static uint8_t read_byte(void)
 {
     dd_input();
+    ets_delay_us(2);  /* turnaround time for CC1110 to drive DD */
     uint8_t v = 0;
     for (int i = 7; i >= 0; i--)
         v |= (read_bit() << i);
@@ -343,7 +344,7 @@ static void hw_init(void)
     gpio_config_t dd_cfg = {
         .pin_bit_mask = (1ULL << PIN_DD),
         .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_ENABLE,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,   /* CC1110 has its own pull-up */
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
     };
@@ -476,48 +477,16 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(200));
     }
 
-    /* 0e: Quick simulated debug entry (at real speed for LA1010 decode test) */
-    ESP_LOGI(TAG, "[0e] Simulating debug entry sequence at full speed...");
-    ESP_LOGI(TAG, "      This is what the real entry looks like on the LA1010:");
-    ESP_LOGI(TAG, "      RESET_N LOW → 2 DC rising edges → RESET_N HIGH");
-    vTaskDelay(pdMS_TO_TICKS(100));
+    /* 0e/0f: REMOVED — simulated debug entry + GET_CHIP_ID were entering
+     *        the real CC1110 into debug mode and leaving the bus out of sync.
+     *        Channel mapping is verified by the blink phases above. */
+    ESP_LOGI(TAG, "[0e] Skipped (simulated debug entry removed to avoid bus corruption)");
+    ESP_LOGI(TAG, "[0f] Skipped (simulated GET_CHIP_ID removed)");
 
-    gpio_set_level(PIN_RST, 1);
-    ets_delay_us(100);
-    gpio_set_level(PIN_RST, 0);     /* RESET_N goes LOW */
-    ets_delay_us(100);
-    dc_low();  wait();  dc_high();  wait();  /* 1st rising edge */
-    dc_low();  wait();  dc_high();  wait();  /* 2nd rising edge */
-    dc_low();
-    ets_delay_us(100);
-    gpio_set_level(PIN_RST, 1);     /* RESET_N goes HIGH */
-    ets_delay_us(100);
-
-    ESP_LOGI(TAG, "      Done. Check LA1010 capture for the pattern.");
-
-    /* 0f: Simulate GET_CHIP_ID command byte (0x68) on DD clocked by DC */
-    ESP_LOGI(TAG, "[0f] Simulating GET_CHIP_ID command (0x68 = 01101000)...");
-    ESP_LOGI(TAG, "      8 bits clocked out on DD, clocked by DC");
-    vTaskDelay(pdMS_TO_TICKS(100));
-    write_byte(0x68);
-    /* No one will respond — DD will read back pull-up (0xFF) */
-    dd_input();
-    ets_delay_us(50);
-    ESP_LOGI(TAG, "      DD idle after command = %d", dd_read());
-
-    /* 0g: Emit test Intel HEX records to test dump_collect.py */
-    ESP_LOGI(TAG, "[0g] Emitting 4 test Intel HEX records over serial...");
-    ESP_LOGI(TAG, "      These contain the bytes 0x00..0x3F at addresses 0x0000-0x003F");
-    uint8_t test_data[16];
-    for (int row = 0; row < 4; row++) {
-        for (int i = 0; i < 16; i++)
-            test_data[i] = (uint8_t)(row * 16 + i);
-        emit_hex_record(0x00, (uint16_t)(row * 16), test_data, 16);
-    }
-    emit_hex_eof();
-    fflush(stdout);
-    ESP_LOGI(TAG, "      Test HEX emitted (64 bytes + EOF). dump_collect.py should");
-    ESP_LOGI(TAG, "      capture these if the serial link is working.");
+    /* 0g: Connectivity note (HEX emission removed — it caused dump_collect.py
+     *     to stop at the Phase 0g EOF before the real Phase 4 dump). */
+    ESP_LOGI(TAG, "[0g] Serial connectivity assumed OK (HEX test removed).");
+    ESP_LOGI(TAG, "      Use 'python dump_collect.py --test' to validate the parser.");
 
     ESP_LOGI(TAG, "");
     ESP_LOGI(TAG, "Phase 0 DONE. Review your LA1010 capture and serial output.");
@@ -526,82 +495,101 @@ void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(3000));
 
     /* ════════════════════════════════════════════════════════════ */
-    phase_hdr(1, "CONNECTIVITY TEST");
+    phase_hdr(1, "CONNECTIVITY TEST (safe — no DC while RST low)");
     /* ════════════════════════════════════════════════════════════ */
 
-    ESP_LOGI(TAG, "This phase checks wiring WITHOUT entering debug mode.");
-    ESP_LOGI(TAG, "The CC1110 stays in normal operation during this test.");
+    ESP_LOGI(TAG, "Checking wiring without entering debug mode.");
     ESP_LOGI(TAG, "");
 
-    /* Test 1a: RESET_N can be driven low */
-    ESP_LOGI(TAG, "[1a] Driving RESET_N LOW (GPIO%d → pin 31)...", PIN_RST);
-    gpio_set_level(PIN_RST, 0);
-    ets_delay_us(50);
-    ESP_LOGI(TAG, "      RESET_N driven LOW. CC1110 is now in reset.");
-    ESP_LOGI(TAG, "      (If LA1010 shows CH2 still HIGH, RESET_N wire is bad)");
-
-    /* Test 1b: DC pin can toggle */
-    ESP_LOGI(TAG, "[1b] Toggling DC (GPIO%d → pin 15) 4 times...", PIN_DC);
-    for (int i = 0; i < 4; i++) {
-        dc_low(); ets_delay_us(50); dc_high(); ets_delay_us(50);
-    }
-    dc_low();
-    ESP_LOGI(TAG, "      DC toggled. LA1010 CH0 should show 4 pulses.");
-
-    /* Test 1c: DD pin can toggle */
-    ESP_LOGI(TAG, "[1c] Toggling DD (GPIO%d → pin 16) 4 times...", PIN_DD);
-    dd_output();
-    for (int i = 0; i < 4; i++) {
-        dd_low(); ets_delay_us(50); dd_high(); ets_delay_us(50);
-    }
-    ESP_LOGI(TAG, "      DD toggled. LA1010 CH1 should show 4 pulses.");
-
-    /* Test 1d: Release DD, read its idle state */
-    ESP_LOGI(TAG, "[1d] Releasing DD to input (checking pull-up)...");
+    /* Test 1a: DD idle level (CC1110 drives P2.1 during normal operation) */
+    ESP_LOGI(TAG, "[1a] Reading DD idle level (GPIO%d)...", PIN_DD);
     dd_input();
     ets_delay_us(50);
     int dd_idle = dd_read();
-    ESP_LOGI(TAG, "      DD idle level = %d  (expect 1 if pull-up present)", dd_idle);
-    if (dd_idle == 0) {
-        ESP_LOGW(TAG, "      DD is LOW — may indicate DD wire shorted to GND");
-        ESP_LOGW(TAG, "      or CC1110 is driving it LOW. Check wiring.");
-    }
+    ESP_LOGI(TAG, "      DD idle level = %d", dd_idle);
 
-    /* Release reset */
-    ESP_LOGI(TAG, "[1e] Releasing RESET_N (HIGH)...");
+    /* Test 1b: Pulse RESET_N to verify it's connected (no DC toggling!) */
+    ESP_LOGI(TAG, "[1b] Pulsing RESET_N LOW for 10ms (no DC pulses)...");
+    gpio_set_level(PIN_RST, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
     gpio_set_level(PIN_RST, 1);
-    ets_delay_us(100);
-    ESP_LOGI(TAG, "      RESET_N released. CC1110 should boot normally now.");
+    ESP_LOGI(TAG, "      RESET_N pulse done. LA1010 CH2 should show one dip.");
+
+    /* Let the CC1110 boot fully after the reset pulse */
+    ESP_LOGI(TAG, "[1c] Waiting 1s for CC1110 to boot after reset...");
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     ESP_LOGI(TAG, "");
-    ESP_LOGI(TAG, "Phase 1 DONE. If LA1010 showed the expected signals above,");
-    ESP_LOGI(TAG, "wiring is good. Proceeding in 2 seconds...");
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    ESP_LOGI(TAG, "Phase 1 DONE. Proceeding to debug entry...");
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     /* ════════════════════════════════════════════════════════════ */
     phase_hdr(2, "ENTER DEBUG MODE");
     /* ════════════════════════════════════════════════════════════ */
 
-    ESP_LOGI(TAG, "[2a] Asserting RESET_N LOW...");
-    gpio_set_level(PIN_RST, 0);
-    ets_delay_us(100);
-    ESP_LOGI(TAG, "      RESET_N is LOW. CC1110 held in reset.");
+    /*
+     * CRITICAL SECTION — no ESP_LOGI between these operations!
+     * Timing-sensitive debug entry per CC1110 datasheet §11.3:
+     *   1. Assert RESET_N LOW (hold ≥ 1ms for clean reset)
+     *   2. Two rising edges on DC while RESET_N is LOW
+     *   3. Release RESET_N after a brief hold
+     *   4. Wait for chip to settle (≥ 2ms for XOSC startup)
+     */
+    ESP_LOGI(TAG, "[2a-c] Entering debug mode (RST LOW → 2 DC edges → RST HIGH)...");
 
-    ESP_LOGI(TAG, "[2b] Sending 2 rising edges on DC while RESET_N is LOW...");
-    dc_low();  wait();  dc_high();  wait();
-    dc_low();  wait();  dc_high();  wait();
+    /* Ensure lines are idle before starting */
     dc_low();
-    ESP_LOGI(TAG, "      Two clock pulses sent. Debug mode requested.");
+    dd_output();
+    dd_high();
+    ets_delay_us(100);
 
-    ESP_LOGI(TAG, "[2c] Releasing RESET_N (HIGH)...");
-    ets_delay_us(10);
+    /* Step 1: Assert RESET_N LOW for a solid reset */
+    gpio_set_level(PIN_RST, 0);
+    ets_delay_us(2000);   /* 2ms — generous hold time */
+
+    /* Step 2: Exactly two rising edges on DC while RESET_N is LOW */
+    dc_low();  ets_delay_us(T_CLK);
+    dc_high(); ets_delay_us(T_CLK);  /* rising edge 1 */
+    dc_low();  ets_delay_us(T_CLK);
+    dc_high(); ets_delay_us(T_CLK);  /* rising edge 2 */
+    dc_low();  /* leave DC low — idle state */
+    ets_delay_us(100);
+
+    /* Step 3: Release RESET_N */
     gpio_set_level(PIN_RST, 1);
-    ets_delay_us(500);
-    ESP_LOGI(TAG, "      RESET_N released. CC1110 should be in debug mode now.");
 
-    /* Verify by reading chip ID */
+    /* Step 4: Wait for CC1110 to settle (XOSC startup + debug init) */
+    ets_delay_us(10000);  /* 10ms — very generous */
+
+    ESP_LOGI(TAG, "      Debug entry sequence complete.");
+    ESP_LOGI(TAG, "      RST held LOW for 2ms, 2 DC edges, then 10ms settle.");
+
+    /* Verify by reading chip ID — retry up to 3 times with fresh debug entry */
     ESP_LOGI(TAG, "[2d] Sending GET_CHIP_ID command (0x%02X)...", CMD_GET_CHIP_ID);
-    uint16_t chip_id = get_chip_id();
+    uint16_t chip_id = 0xFFFF;
+    for (int attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+            ESP_LOGW(TAG, "      Retry %d: re-entering debug mode...", attempt + 1);
+            /* Full fresh debug entry */
+            dc_low(); dd_output(); dd_high();
+            gpio_set_level(PIN_RST, 0);
+            ets_delay_us(5000);
+            dc_low();  ets_delay_us(T_CLK);
+            dc_high(); ets_delay_us(T_CLK);
+            dc_low();  ets_delay_us(T_CLK);
+            dc_high(); ets_delay_us(T_CLK);
+            dc_low();  ets_delay_us(100);
+            gpio_set_level(PIN_RST, 1);
+            ets_delay_us(10000);
+        }
+        chip_id = get_chip_id();
+        ESP_LOGI(TAG, "      Attempt %d: Chip ID = 0x%04X", attempt + 1, chip_id);
+        if (chip_id != 0x0000 && chip_id != 0xFFFF)
+            break;
+        /* Also try READ_STATUS to see if we get anything besides 0xFF */
+        uint8_t probe_status = read_status();
+        ESP_LOGI(TAG, "      Attempt %d: READ_STATUS = 0x%02X", attempt + 1, probe_status);
+    }
     ESP_LOGI(TAG, "      Chip ID = 0x%04X  (high byte=0x%02X, rev=0x%02X)",
              chip_id, (uint8_t)(chip_id >> 8), (uint8_t)(chip_id & 0xFF));
 

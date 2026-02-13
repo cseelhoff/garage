@@ -1,0 +1,75 @@
+*** Serial disconnected (ESP32 reset?) ***
+  Waiting for COM3 to reappear...
+  COM3 is back. Reconnecting...
+  Reconnected! Listening...
+
+  I (3125) ccdebug:
+  I (3125) ccdebug: ========================================
+  I (3125) ccdebug:   PHASE 0: PIN IDENTIFICATION (LA1010 channel mapping)
+  I (3125) ccdebug: ========================================
+  I (3126) ccdebug: Each pin will blink SLOWLY one at a time so you can
+  I (3126) ccdebug: identify which LA1010 channel is connected to which signal.
+  I (3126) ccdebug: Watch your LA1010 — only ONE channel should toggle at a time.
+  I (3126) ccdebug:
+  I (3626) ccdebug: [0a] Blinking RESET_N (GPIO4) — 3 slow pulses...
+  I (3626) ccdebug:       → LA1010: only CH2 should toggle
+  I (5326) ccdebug: [0b] Blinking DC (GPIO2) — 3 slow pulses...
+  I (5326) ccdebug:       → LA1010: only CH0 should toggle
+  I (7026) ccdebug: [0c] Blinking DD (GPIO3) — 3 slow pulses...
+  I (7026) ccdebug:       → LA1010: only CH1 should toggle
+  I (8726) ccdebug: [0d] Blinking ALL THREE pins together — 3 pulses...
+  I (8726) ccdebug:       → LA1010: CH0 + CH1 + CH2 should all toggle in sync
+  I (9926) ccdebug: [0e] Simulating debug entry sequence at full speed...
+  I (9926) ccdebug:       This is what the real entry looks like on the LA1010:
+  I (9927) ccdebug:       RESET_N LOW → 2 DC rising edges → RESET_N HIGH
+  I (10027) ccdebug:       Done. Check LA1010 capture for the pattern.
+  I (10027) ccdebug: [0f] Simulating GET_CHIP_ID command (0x68 = 01101000)...
+  I (10028) ccdebug:       8 bits clocked out on DD, clocked by DC
+  I (10128) ccdebug:       DD idle after command = 1
+  I (10128) ccdebug: [0g] Serial connectivity assumed OK (HEX test removed).
+  I (10129) ccdebug:       Use 'python dump_collect.py --test' to validate the parser.
+  I (10129) ccdebug:
+  I (10129) ccdebug: Phase 0 DONE. Review your LA1010 capture and serial output.
+  I (10129) ccdebug: If everything looks correct, the system is ready.
+  I (10130) ccdebug: Proceeding to real phases in 3 seconds...
+  I (13130) ccdebug:
+  I (13130) ccdebug: ========================================
+  I (13130) ccdebug:   PHASE 1: CONNECTIVITY TEST
+  I (13130) ccdebug: ========================================
+  I (13131) ccdebug: This phase checks wiring WITHOUT entering debug mode.
+  I (13131) ccdebug: The CC1110 stays in normal operation during this test.
+  I (13131) ccdebug:
+  I (13131) ccdebug: [1a] Driving RESET_N LOW (GPIO4 → pin 31)...
+  I (13131) ccdebug:       RESET_N driven LOW. CC1110 is now in reset.
+  I (13132) ccdebug:       (If LA1010 shows CH2 still HIGH, RESET_N wire is bad)
+  I (13132) ccdebug: [1b] Toggling DC (GPIO2 → pin 15) 4 times...
+  I (13133) ccdebug:       DC toggled. LA1010 CH0 should show 4 pulses.
+  I (13133) ccdebug: [1c] Toggling DD (GPIO3 → pin 16) 4 times...
+  I (13133) ccdebug:       DD toggled. LA1010 CH1 should show 4 pulses.
+  I (13134) ccdebug: [1d] Releasing DD to input (checking pull-up)...
+  I (13134) ccdebug:       DD idle level = 1  (expect 1 if pull-up present)
+  I (13134) ccdebug: [1e] Releasing RESET_N (HIGH)...
+  I (13134) ccdebug:       RESET_N released. CC1110 should boot normally now.
+  I (13135) ccdebug:
+  I (13135) ccdebug: Phase 1 DONE. If LA1010 showed the expected signals above,
+  I (13135) ccdebug: wiring is good. Proceeding in 2 seconds...
+  I (15135) ccdebug:
+  I (15135) ccdebug: ========================================
+  I (15135) ccdebug:   PHASE 2: ENTER DEBUG MODE
+  I (15135) ccdebug: ========================================
+  I (15135) ccdebug: [2a] Asserting RESET_N LOW...
+  I (15136) ccdebug:       RESET_N is LOW. CC1110 held in reset.
+  I (15136) ccdebug: [2b] Sending 2 rising edges on DC while RESET_N is LOW...
+  I (15136) ccdebug:       Two clock pulses sent. Debug mode requested.
+  I (15136) ccdebug: [2c] Releasing RESET_N (HIGH)...
+  I (15137) ccdebug:       RESET_N released. CC1110 should be in debug mode now.
+  I (15137) ccdebug: [2d] Sending GET_CHIP_ID command (0x68)...
+  I (15138) ccdebug:       Chip ID = 0xFFFF  (high byte=0xFF, rev=0xFF)
+  E (15138) ccdebug:       Chip ID is 0xFFFF — no response from CC1110!
+  E (15138) ccdebug:       LIKELY CAUSES:
+  E (15139) ccdebug:         - DC and DD wires swapped (pin 15 vs pin 16)
+  E (15139) ccdebug:         - RESET_N not connected properly
+  E (15139) ccdebug:         - CC1110 not powered (check 3.3V)
+  E (15139) ccdebug:         - Bad solder joint on debug pins
+  E (15139) ccdebug: *** STOPPED: No response to GET_CHIP_ID ***
+  E (15139) ccdebug: Remove power, check wiring, and retry.

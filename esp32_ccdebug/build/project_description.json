@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "cc_flash_dump",
-    "project_version":    "3b574aa",
+    "project_version":    "efc32ff-dirty",
     "project_path":       "C:/Users/caleb/Downloads/garage/esp32_ccdebug",
     "idf_path":           "C:/Espressif/frameworks/esp-idf-v5.5.2",
     "build_dir":          "C:/Users/caleb/Downloads/garage/esp32_ccdebug/build",
